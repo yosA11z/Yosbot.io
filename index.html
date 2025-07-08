@@ -361,9 +361,19 @@
     }
 
     async function guardarBots() {
-      await setDoc(doc(db, "users", user.uid), { bots }, { merge: true });
-      showNotification("¡Guardado en la nube!");
-    }
+  const cleanBots = {};
+  for (const id in bots) {
+    const { name, messages, qa } = bots[id];
+    cleanBots[id] = {
+      name,
+      messages: messages || [],
+      qa: qa || []
+    };
+  }
+  await setDoc(doc(db, "users", user.uid), { bots: cleanBots }, { merge: true });
+  showNotification("¡Guardado en la nube!");
+}
+
 
     window.crearChatbot = async function () {
       const name = prompt("Nombre del chatbot:");
