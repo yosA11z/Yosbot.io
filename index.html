@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Chatbots Personalizados</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: 'Inter', sans-serif;
+      background-color: #121212;
+      color: #f1f1f1;
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+    }
+    .sidebar {
+      background-color: #1e1e1e;
+      width: 60px;
+      transition: width 0.3s ease;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 10px;
+      overflow-y: auto;
+    }
+    .sidebar:hover {
+      width: 240px;
+      align-items: flex-start;
+      padding-left: 20px;
+    }
+    .sidebar .title, .sidebar .btn, .sidebar .bot-list {
+      display: none;
+    }
+    .sidebar:hover .title,
+    .sidebar:hover .btn,
+    .sidebar:hover .bot-list {
+      display: block;
+      width: 100%;
+    }
+    .hamburger {
+      font-size: 24px;
+      cursor: default;
+      margin-bottom: 10px;
+    }
+    .title {
+      font-size: 18px;
+      margin: 0 0 20px 0;
+    }
+    .btn {
+      background-color: #4a90e2;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background 0.3s ease;
+      margin-bottom: 10px;
+    }
+    .btn:hover {
+      background-color: #357bd8;
+    }
+    .bot-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .bot-item {
+      background-color: #2a2a2a;
+      padding: 8px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .bot-item:hover {
+      background-color: #3a3a3a;
+    }
+    .main-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+    .intro {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      gap: 20px;
+      font-size: 20px;
+      text-align: center;
+    }
+    .chatbot {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+    .chat-header {
+      background: #4a90e2;
+      color: white;
+      padding: 15px;
+      font-weight: 600;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .chat-body {
+      flex: 1;
+      padding: 20px 10%;
+      overflow-y: auto;
+      background: #2a2a2a;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      min-height: 0; /* cambio clave */
+    }
+    .chat-input {
+      display: flex;
+      justify-content: center;
+      padding: 10px 0;
+      background-color: #1e1e1e;
+      border-top: 1px solid #333;
+    }
+    .chat-input input {
+      width: 65%;
+      padding: 8px 14px;
+      border: 1px solid #444;
+      border-radius: 6px;
+      background: #2c2c2c;
+      color: #f1f1f1;
+      font-size: 16px;
+    }
+    .chat-input button {
+      margin-left: 10px;
+      padding: 8px 14px;
+      font-size: 15px;
+      background-color: #4a90e2;
+      border: none;
+      border-radius: 6px;
+      color: white;
+      cursor: pointer;
+    }
+    .message {
+      font-size: 20px;
+      line-height: 1.5;
+      padding: 10px 16px;
+      border-radius: 16px;
+      max-width: 75%;
+      word-wrap: break-word;
+      animation: fadeInUp 0.3s ease-out;
+    }
+    .user {
+      background: #3168a5;
+      color: white;
+      align-self: flex-end;
+    }
+    .bot {
+      background: #3a3a3a;
+      color: white;
+      align-self: flex-start;
+    }
+    .gear, .trash {
+      cursor: pointer;
+      margin-left: 10px;
+    }
+    .config-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(18,18,18,0.98);
+      z-index: 999;
+      padding: 40px;
+      overflow-y: auto;
+    }
+    .config-modal input, .config-modal button {
+      width: 100%;
+      margin-bottom: 10px;
+    }
+    .config-modal input[type="text"] {
+      padding: 10px;
+      border: 1px solid #555;
+      border-radius: 6px;
+      background: #2c2c2c;
+      color: white;
+    }
+    .config-modal input[type="file"] {
+      color: white;
+    }
+    .config-modal button {
+      padding: 10px;
+      background-color: #4a90e2;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .close-btn {
+      position: absolute;
+      top: 20px;
+      right: 30px;
+      font-size: 24px;
+      cursor: pointer;
+    }
+    .notification {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: #4a90e2;
+      color: white;
+      padding: 12px 18px;
+      border-radius: 8px;
+      z-index: 1000;
+      display: none;
+    }
+    .qa-entry {
+      background: #2a2a2a;
+      padding: 8px 12px;
+      border-radius: 6px;
+      margin: 6px 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .chat-img {
+      max-width: 240px;
+      max-height: 240px;
+      margin-top: 10px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: transform 0.2s ease;
+    }
+    .fullscreen-img {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0,0,0,0.9);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+    }
+    .fullscreen-img img {
+      max-width: 90%;
+      max-height: 90%;
+    }
+    @keyframes fadeInUp {
+      0% { opacity: 0; transform: translateY(10px); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+  <div class="sidebar" id="sidebar">
+    <div class="hamburger">☰</div>
+    <h1 class="title">Chatbots</h1>
+    <button class="btn" onclick="crearChatbot()">+ Crear Chatbot</button>
+    <div id="bot-list" class="bot-list"></div>
+  </div>
+
+  <div class="main-content">
+    <div class="intro" id="intro">
+      <div>🤖 <strong>Chatbots Personalizados</strong></div>
+      <div><button class="btn" onclick="crearChatbot()">+ Crear Chatbot</button></div>
+    </div>
+    <div id="chatbot-container" style="flex:1; display:none; position:relative;"></div>
+  </div>
+
+  <div id="noti" class="notification">¡Guardado exitosamente!</div>
+
+  <!-- ... (todo el HTML anterior se mantiene igual hasta la función renderMensajes) -->
+
+<script>
+  let currentBotId = null;
+  let bots = JSON.parse(localStorage.getItem("chatbots") || "{}");
+
+  function saveBots() {
+    localStorage.setItem("chatbots", JSON.stringify(bots));
+  }
+
+  function showNotification(msg = "¡Guardado exitosamente!") {
+    const noti = document.getElementById("noti");
+    noti.innerText = msg;
+    noti.style.display = "block";
+    setTimeout(() => noti.style.display = "none", 3000);
+  }
+
+  function crearChatbot() {
+    const name = prompt("Nombre del chatbot:");
+    if (!name) return;
+    const id = Date.now().toString();
+    bots[id] = { name, messages: [], qa: [] };
+    currentBotId = id;
+    saveBots();
+    renderSidebar();
+    showBot(id);
+  }
+
+  function renderSidebar() {
+    const list = document.getElementById("bot-list");
+    list.innerHTML = "";
+    for (const id in bots) {
+      const item = document.createElement("div");
+      item.className = "bot-item";
+
+      const nameSpan = document.createElement("span");
+      nameSpan.textContent = bots[id].name;
+      nameSpan.style.flex = "1";
+      nameSpan.style.cursor = "pointer";
+      nameSpan.onclick = () => showBot(id);
+
+      const trashSpan = document.createElement("span");
+      trashSpan.innerHTML = "🗑️";
+      trashSpan.className = "trash";
+      trashSpan.onclick = (e) => {
+        e.stopPropagation();
+        borrarBot(id);
+      };
+
+      item.appendChild(nameSpan);
+      item.appendChild(trashSpan);
+      list.appendChild(item);
+    }
+  }
+
+  function borrarBot(id) {
+    if (confirm("¿Eliminar este chatbot?")) {
+      delete bots[id];
+      saveBots();
+      renderSidebar();
+      document.getElementById("chatbot-container").style.display = "none";
+      document.getElementById("intro").style.display = "flex";
+    }
+  }
+
+  function showBot(id) {
+    currentBotId = id;
+    document.getElementById("intro").style.display = "none";
+    const cont = document.getElementById("chatbot-container");
+    cont.style.display = "flex";
+    cont.innerHTML = `
+      <div class="chatbot">
+        <div class="chat-header">
+          <span>${bots[id].name}</span>
+          <div><span class="gear" onclick="abrirConfig('${id}')">⚙️</span></div>
+        </div>
+        <div class="chat-body" id="chat-body"></div>
+        <div class="chat-input">
+          <input type="text" class="chat-input-box" placeholder="Escribe..." />
+          <button class="chat-send-btn">Enviar</button>
+        </div>
+      </div>
+    `;
+    renderMensajes();
+
+    document.querySelector(".chat-send-btn").onclick = () => {
+      const input = document.querySelector(".chat-input-box");
+      const msg = input.value.trim();
+      if (!msg) return;
+      bots[currentBotId].messages.push({ from: "user", text: msg });
+      const match = bots[currentBotId].qa.find(p => p.q.toLowerCase() === msg.toLowerCase());
+      let respuesta = match ? match.a : "No entiendo esa pregunta.";
+      bots[currentBotId].messages.push({ from: "bot", text: respuesta, image: match?.img });
+      saveBots();
+      input.value = "";
+      renderMensajes();
+    };
+  }
+
+  function renderMensajes() {
+    const chat = document.getElementById("chat-body");
+    if (!chat) return;
+    chat.innerHTML = "";
+    bots[currentBotId].messages.forEach(m => {
+      const div = document.createElement("div");
+      div.className = `message ${m.from}`;
+
+      const spanText = document.createElement("span");
+      spanText.textContent = m.text;
+      div.appendChild(spanText);
+
+      if (m.from === "bot") {
+        const icon = document.createElement("span");
+        icon.innerHTML = `
+          <svg xmlns="http://www.w3.org/2000/svg" height="18" viewBox="0 0 24 24" fill="#ccc" style="margin-left:8px;vertical-align:middle;">
+            <path d="M0 0h24v24H0z" fill="none"/>
+            <path d="M3 10v4h4l5 5V5l-5 5H3zm13.5 2c0-1.77-1.02-3.29-2.5-4.03v8.06c1.48-.74 2.5-2.26 2.5-4.03z"/>
+          </svg>`;
+        icon.style.cursor = "pointer";
+        icon.title = "Escuchar respuesta";
+        icon.onclick = () => speak(m.text);
+        div.appendChild(icon);
+      }
+
+      chat.appendChild(div);
+
+      if (m.image) {
+        const img = document.createElement("img");
+        img.src = m.image;
+        img.className = "chat-img";
+        img.onclick = () => showFullscreen(img.src);
+        chat.appendChild(img);
+      }
+    });
+    chat.scrollTop = chat.scrollHeight;
+  }
+
+  function showFullscreen(src) {
+    const fs = document.createElement("div");
+    fs.className = "fullscreen-img";
+    fs.innerHTML = `<img src="${src}" onclick="this.parentElement.remove()" />`;
+    document.body.appendChild(fs);
+  }
+
+  function abrirConfig(id) {
+    const modal = document.createElement("div");
+    modal.className = "config-modal";
+    modal.innerHTML = `
+      <div class="close-btn" onclick="this.parentElement.remove()">✖</div>
+      <h2>Configuración de ${bots[id].name}</h2>
+      <input type="text" id="preg" placeholder="Pregunta" />
+      <input type="text" id="resp" placeholder="Respuesta" />
+      <input type="file" id="img" accept="image/*" />
+      <button onclick="guardarRespuesta('${id}')">Guardar</button>
+      <div id="qa-list"></div>
+    `;
+    document.body.appendChild(modal);
+    renderQA(id);
+  }
+
+  function guardarRespuesta(id) {
+    const q = document.getElementById("preg").value.trim();
+    const a = document.getElementById("resp").value.trim();
+    const imgInput = document.getElementById("img");
+    if (!q || !a) return;
+    const file = imgInput.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        bots[id].qa.push({ q, a, img: reader.result });
+        saveBots();
+        showNotification();
+        renderQA(id);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      bots[id].qa.push({ q, a });
+      saveBots();
+      showNotification();
+      renderQA(id);
+    }
+    document.getElementById("preg").value = "";
+    document.getElementById("resp").value = "";
+    imgInput.value = "";
+  }
+
+  function renderQA(id) {
+    const list = document.getElementById("qa-list");
+    if (!list) return;
+    list.innerHTML = '<h3 style="margin-top:20px">Preguntas guardadas:</h3>';
+    bots[id].qa.forEach((p, i) => {
+      const div = document.createElement("div");
+      div.className = "qa-entry";
+      div.innerHTML = `${p.q}<span style='cursor:pointer;' onclick='eliminarQA("${id}", ${i})'>❌</span>`;
+      list.appendChild(div);
+    });
+  }
+
+  function eliminarQA(id, index) {
+    bots[id].qa.splice(index, 1);
+    saveBots();
+    renderQA(id);
+  }
+
+  function speak(text) {
+    const utterance = new SpeechSynthesisUtterance(text);
+    speechSynthesis.speak(utterance);
+  }
+
+  renderSidebar();
+</script>
+
+</body>
+</html>
