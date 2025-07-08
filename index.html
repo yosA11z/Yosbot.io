@@ -451,18 +451,25 @@
       renderMensajes();
 
       document.querySelector(".chat-send-btn").onclick = async () => {
-        const input = document.querySelector(".chat-input-box");
-        const msg = input.value.trim();
-        if (!msg) return;
-        bots[currentBotId].messages.push({ from: "user", text: msg });
-        const match = bots[currentBotId].qa.find(p => p.q.toLowerCase() === msg.toLowerCase());
-        let respuesta = match ? match.a : "No entiendo esa pregunta.";
-        bots[currentBotId].messages.push({ from: "bot", text: respuesta, image: match?.img });
-        input.value = "";
-        renderMensajes();
-        await guardarBots();
-      };
-    };
+  const input = document.querySelector(".chat-input-box");
+  const msg = input.value.trim();
+  if (!msg) return;
+
+  bots[currentBotId].messages.push({ from: "user", text: msg });
+
+  const match = bots[currentBotId].qa.find(p => p.q.toLowerCase() === msg.toLowerCase());
+  let respuesta = match ? match.a : "No entiendo esa pregunta.";
+
+  // ✅ Evita guardar undefined:
+  const botMsg = { from: "bot", text: respuesta };
+  if (match?.img) botMsg.image = match.img;
+  bots[currentBotId].messages.push(botMsg);
+
+  input.value = "";
+  renderMensajes();
+  await guardarBots(); // Esto también activa el notificador
+};
+
 
     window.renderMensajes = function () {
       const chat = document.getElementById("chat-body");
@@ -572,3 +579,4 @@
   </script>
 </body>
 </html>
+
