@@ -10,16 +10,14 @@
     import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
     import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-    // 🔁 Tu configuración real de Firebase:
     const firebaseConfig = {
-  apiKey: "AIzaSyC-ZActvyB64PUetdMRTdVT5Ca5iOg3qXo",
-  authDomain: "yosbot-io.firebaseapp.com",
-  projectId: "yosbot-io",
-  storageBucket: "yosbot-io.firebasestorage.app",
-  messagingSenderId: "834068770465",
-  appId: "1:834068770465:web:fb01a60a4456c699bb0ae0"
-};
-
+      apiKey: "AIzaSyC-ZActvyB64PUetdMRTdVT5Ca5iOg3qXo",
+      authDomain: "yosbot-io.firebaseapp.com",
+      projectId: "yosbot-io",
+      storageBucket: "yosbot-io.appspot.com",
+      messagingSenderId: "834068770465",
+      appId: "1:834068770465:web:fb01a60a4456c699bb0ae0"
+    };
 
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
@@ -75,10 +73,21 @@
       if (u) {
         user = u;
         loginSection.remove();
+        console.log("Autenticado como:", user.email);
         await cargarBots();
         renderSidebar();
+
+        const header = document.createElement("div");
+        header.style.cssText = "position:fixed;top:10px;right:10px;color:#ccc;font-size:14px;z-index:999;";
+        header.innerHTML = `👤 ${user.email} <button onclick="logout()" style="margin-left:10px;padding:5px;">Cerrar sesión</button>`;
+        document.body.appendChild(header);
       }
     });
+
+    window.logout = async function () {
+      await signOut(auth);
+      location.reload();
+    };
 
     async function cargarBots() {
       const docSnap = await getDoc(doc(db, "users", user.uid));
@@ -91,6 +100,7 @@
     }
 
     window.crearChatbot = async function () {
+      if (!user) return alert("Debes iniciar sesión");
       const name = prompt("Nombre del chatbot:");
       if (!name) return;
       const id = Date.now().toString();
@@ -319,7 +329,6 @@
     }
     .hamburger {
       font-size: 24px;
-      cursor: default;
       margin-bottom: 10px;
     }
     .title {
@@ -375,13 +384,12 @@
       text-align: center;
     }
     .chatbot {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-  overflow: hidden;
-}
-
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
     .chat-header {
       background: #4a90e2;
       color: white;
@@ -399,7 +407,7 @@
       display: flex;
       flex-direction: column;
       gap: 12px;
-      min-height: 0; /* cambio clave */
+      min-height: 0;
     }
     .chat-input {
       display: flex;
@@ -452,10 +460,8 @@
     }
     .config-modal {
       position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
+      top: 0; left: 0;
+      right: 0; bottom: 0;
       background: rgba(18,18,18,0.98);
       z-index: 999;
       padding: 40px;
@@ -472,89 +478,81 @@
       background: #2c2c2c;
       color: white;
     }
-    .config-modal input[type="file"] {
-      color: white;
-    }
     .config-modal button {
       padding: 10px;
-      background-color: #4a90e2;
+      background: #4a90e2;
+      color: white;
       border: none;
       border-radius: 6px;
       cursor: pointer;
     }
-    .close-btn {
-      position: absolute;
-      top: 20px;
-      right: 30px;
-      font-size: 24px;
-      cursor: pointer;
-    }
-    .notification {
-      position: fixed;
-      bottom: 20px;
-      right: 20px;
-      background: #4a90e2;
-      color: white;
-      padding: 12px 18px;
-      border-radius: 8px;
-      z-index: 1000;
-      display: none;
-    }
     .qa-entry {
       background: #2a2a2a;
-      padding: 8px 12px;
+      padding: 10px;
+      margin-top: 8px;
       border-radius: 6px;
-      margin: 6px 0;
       display: flex;
       justify-content: space-between;
       align-items: center;
     }
-    .chat-img {
-      max-width: 240px;
-      max-height: 240px;
-      margin-top: 10px;
-      border-radius: 8px;
+    .close-btn {
+      font-size: 20px;
       cursor: pointer;
-      transition: transform 0.2s ease;
+      position: absolute;
+      top: 20px;
+      right: 30px;
+    }
+    .chat-img {
+      max-width: 250px;
+      max-height: 180px;
+      border-radius: 10px;
+      cursor: pointer;
     }
     .fullscreen-img {
       position: fixed;
-      top: 0; left: 0;
-      width: 100vw;
-      height: 100vh;
-      background: rgba(0,0,0,0.9);
+      top:0; left:0; right:0; bottom:0;
+      background: rgba(0,0,0,0.95);
       display: flex;
       justify-content: center;
       align-items: center;
-      z-index: 9999;
+      z-index: 1000;
     }
     .fullscreen-img img {
       max-width: 90%;
       max-height: 90%;
+      border-radius: 10px;
+    }
+    #noti {
+      position: fixed;
+      bottom: 30px;
+      right: 30px;
+      background: #3168a5;
+      color: white;
+      padding: 10px 16px;
+      border-radius: 8px;
+      display: none;
     }
     @keyframes fadeInUp {
-      0% { opacity: 0; transform: translateY(10px); }
-      100% { opacity: 1; transform: translateY(0); }
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
     }
-
   </style>
 </head>
+
 <body>
-  <div class="sidebar" id="sidebar">
+  <div class="sidebar">
     <div class="hamburger">☰</div>
-    <h1 class="title">Chatbots</h1>
+    <h2 class="title">Mis Bots</h2>
     <button class="btn" onclick="crearChatbot()">+ Crear Chatbot</button>
-    <div id="bot-list" class="bot-list"></div>
+    <div class="bot-list" id="bot-list"></div>
   </div>
-
   <div class="main-content">
-    <div class="intro" id="intro">
-      <div>🤖 <strong>Chatbots Personalizados</strong></div>
-      <div><button class="btn" onclick="crearChatbot()">+ Crear Chatbot</button></div>
+    <div id="intro" class="intro">
+      <h1>Bienvenido a tu Chatbot</h1>
+      <p>Selecciona o crea uno desde el menú izquierdo</p>
     </div>
-    <div id="chatbot-container" style="flex:1; display:none; position:relative;"></div>
+    <div id="chatbot-container" style="display: none;"></div>
+    <div id="noti"></div>
   </div>
-
-  <div id="noti" class="notification">¡Guardado exitosamente!</div>
 </body>
 </html>
