@@ -474,27 +474,41 @@
     };
 
     window.renderMensajes = function () {
-      const chat = document.getElementById("chat-body");
-      if (!chat) return;
-      chat.innerHTML = "";
-      bots[currentBotId].messages.forEach(m => {
-        const div = document.createElement("div");
-        div.className = `message ${m.from}`;
-        div.innerHTML = `${m.text}`;
-        if (m.from === "bot") {
-          div.innerHTML += ` <span title="Escuchar" onclick="speak('${m.text.replace(/'/g, "\\'")}')">🔊</span>`;
-        }
-        chat.appendChild(div);
-        if (m.image) {
-          const img = document.createElement("img");
-          img.src = m.image;
-          img.className = "chat-img";
-          img.onclick = () => showFullscreen(img.src);
-          chat.appendChild(img);
-        }
-      });
-      chat.scrollTop = chat.scrollHeight;
-    };
+  const chat = document.getElementById("chat-body");
+  if (!chat) return;
+  chat.innerHTML = "";
+  
+  bots[currentBotId].messages.forEach(m => {
+    const div = document.createElement("div");
+    div.className = `message ${m.from}`;
+    
+    // Convertimos saltos de línea a <br>
+    div.innerHTML = m.text.replace(/\n/g, "<br>");
+
+    // Si es bot, añadimos el ícono de audio como span aparte
+    if (m.from === "bot") {
+      const span = document.createElement("span");
+      span.innerText = " 🔊";
+      span.title = "Escuchar";
+      span.style.cursor = "pointer";
+      span.onclick = () => speak(m.text);
+      div.appendChild(span);
+    }
+
+    chat.appendChild(div);
+
+    if (m.image) {
+      const img = document.createElement("img");
+      img.src = m.image;
+      img.className = "chat-img";
+      img.onclick = () => showFullscreen(img.src);
+      chat.appendChild(img);
+    }
+  });
+
+  chat.scrollTop = chat.scrollHeight;
+};
+
 
     window.abrirConfig = function (id) {
       const modal = document.createElement("div");
@@ -503,7 +517,7 @@
         <div class="close-btn" onclick="this.parentElement.remove()">✖</div>
         <h2>Configuración de ${bots[id].name}</h2>
         <input type="text" id="preg" placeholder="Pregunta" />
-        <input type="text" id="resp" placeholder="Respuesta" />
+        <textarea id="resp" placeholder="Respuesta" rows="4" style="resize: vertical; padding:10px; background:#2c2c2c; color:white; border:1px solid #555; border-radius:6px;"></textarea>
         <input type="file" id="img" accept="image/*" />
         <button onclick="guardarRespuesta('${id}')">Guardar</button>
         <div id="qa-list"></div>
@@ -563,10 +577,24 @@
       document.body.appendChild(fs);
     };
 
-    window.speak = function (text) {
-      const utterance = new SpeechSynthesisUtterance(text);
-      speechSynthesis.speak(utterance);
-    };
+   window.speak = function (text) {
+  if (!text || typeof text !== "string") return;
+
+  // Normalizamos saltos de línea
+  const cleaned = text
+    .replace(/\r\n|\r|\n/g, '. ')      // Saltos de línea → punto y espacio
+    .replace(/\s{2,}/g, ' ')           // Espacios dobles → uno
+    .trim();
+
+  const utterance = new SpeechSynthesisUtterance(cleaned);
+  utterance.lang = 'es-ES'; // Español (opcional)
+
+  speechSynthesis.cancel(); // Detiene cualquier lectura anterior
+  speechSynthesis.speak(utterance);
+};
+
+
+
 
     window.showNotification = function (msg = "¡Guardado exitosamente!") {
       const noti = document.getElementById("noti");
