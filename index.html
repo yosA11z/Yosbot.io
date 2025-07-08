@@ -356,9 +356,21 @@
     });
 
     async function cargarBots() {
-      const snap = await getDoc(doc(db, "users", user.uid));
-      bots = snap.exists() ? snap.data().bots || {} : {};
+  const snap = await getDoc(doc(db, "users", user.uid));
+  bots = {};
+  if (snap.exists()) {
+    const data = snap.data().bots || {};
+    for (const id in data) {
+      const bot = data[id];
+      bots[id] = {
+        name: bot.name || "Sin nombre",
+        messages: bot.messages || [],
+        qa: bot.qa || []
+      };
     }
+  }
+}
+
 
     async function guardarBots() {
   const cleanBots = {};
