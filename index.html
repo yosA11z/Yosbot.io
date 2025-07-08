@@ -5,293 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Chatbots Personalizados</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-    import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-    import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-
-    const firebaseConfig = {
-      apiKey: "AIzaSyC-ZActvyB64PUetdMRTdVT5Ca5iOg3qXo",
-      authDomain: "yosbot-io.firebaseapp.com",
-      projectId: "yosbot-io",
-      storageBucket: "yosbot-io.appspot.com",
-      messagingSenderId: "834068770465",
-      appId: "1:834068770465:web:fb01a60a4456c699bb0ae0"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getFirestore(app);
-
-    let user = null;
-    let bots = {};
-    let currentBotId = null;
-
-    const loginSection = document.createElement("div");
-    loginSection.style.cssText = "position:fixed;top:0;left:0;width:100vw;height:100vh;background:#121212;color:white;display:flex;flex-direction:column;justify-content:center;align-items:center;z-index:9999;";
-    loginSection.innerHTML = `
-      <h2>Iniciar sesión</h2>
-      <input id="email" type="email" placeholder="Correo" style="padding:10px;width:250px;margin-bottom:10px;">
-      <input id="pass" type="password" placeholder="Contraseña" style="padding:10px;width:250px;margin-bottom:10px;">
-      <div style="display:flex;gap:10px;">
-        <button id="btn-login" style="padding:10px;">Ingresar</button>
-        <button id="btn-register" style="padding:10px;">Registrarse</button>
-        <button id="btn-google" style="padding:10px;">Google</button>
-      </div>
-    `;
-    document.body.appendChild(loginSection);
-
-    document.getElementById("btn-login").onclick = async () => {
-      const email = document.getElementById("email").value;
-      const pass = document.getElementById("pass").value;
-      try {
-        await signInWithEmailAndPassword(auth, email, pass);
-      } catch (e) {
-        alert("Error al iniciar sesión");
-      }
-    };
-
-    document.getElementById("btn-register").onclick = async () => {
-      const email = document.getElementById("email").value;
-      const pass = document.getElementById("pass").value;
-      try {
-        await createUserWithEmailAndPassword(auth, email, pass);
-      } catch (e) {
-        alert("Error al registrarse");
-      }
-    };
-
-    document.getElementById("btn-google").onclick = async () => {
-      try {
-        await signInWithPopup(auth, new GoogleAuthProvider());
-      } catch (e) {
-        alert("Error con Google Sign-In");
-      }
-    };
-
-    onAuthStateChanged(auth, async (u) => {
-      if (u) {
-        user = u;
-        loginSection.remove();
-        console.log("Autenticado como:", user.email);
-        await cargarBots();
-        renderSidebar();
-
-        const header = document.createElement("div");
-        header.style.cssText = "position:fixed;top:10px;right:10px;color:#ccc;font-size:14px;z-index:999;";
-        header.innerHTML = `👤 ${user.email} <button onclick="logout()" style="margin-left:10px;padding:5px;">Cerrar sesión</button>`;
-        document.body.appendChild(header);
-      }
-    });
-
-    window.logout = async function () {
-      await signOut(auth);
-      location.reload();
-    };
-
-    async function cargarBots() {
-      const docSnap = await getDoc(doc(db, "users", user.uid));
-      bots = docSnap.exists() ? docSnap.data().bots || {} : {};
-    }
-
-    async function guardarBots() {
-      await setDoc(doc(db, "users", user.uid), { bots }, { merge: true });
-      showNotification("¡Guardado en la nube!");
-    }
-
-    window.crearChatbot = async function () {
-      if (!user) return alert("Debes iniciar sesión");
-      const name = prompt("Nombre del chatbot:");
-      if (!name) return;
-      const id = Date.now().toString();
-      bots[id] = { name, messages: [], qa: [] };
-      currentBotId = id;
-      await guardarBots();
-      renderSidebar();
-      showBot(id);
-    };
-
-    window.renderSidebar = function () {
-      const list = document.getElementById("bot-list");
-      list.innerHTML = "";
-      for (const id in bots) {
-        const item = document.createElement("div");
-        item.className = "bot-item";
-
-        const nameSpan = document.createElement("span");
-        nameSpan.textContent = bots[id].name;
-        nameSpan.style.flex = "1";
-        nameSpan.style.cursor = "pointer";
-        nameSpan.onclick = () => showBot(id);
-
-        const trashSpan = document.createElement("span");
-        trashSpan.innerHTML = "🗑️";
-        trashSpan.className = "trash";
-        trashSpan.onclick = async (e) => {
-          e.stopPropagation();
-          if (confirm("¿Eliminar este chatbot?")) {
-            delete bots[id];
-            await guardarBots();
-            renderSidebar();
-            document.getElementById("chatbot-container").style.display = "none";
-            document.getElementById("intro").style.display = "flex";
-          }
-        };
-
-        item.appendChild(nameSpan);
-        item.appendChild(trashSpan);
-        list.appendChild(item);
-      }
-    };
-
-    window.showBot = function (id) {
-      currentBotId = id;
-      document.getElementById("intro").style.display = "none";
-      const cont = document.getElementById("chatbot-container");
-      cont.style.display = "flex";
-      cont.innerHTML = `
-        <div class="chatbot">
-          <div class="chat-header">
-            <span>${bots[id].name}</span>
-            <div><span class="gear" onclick="abrirConfig('${id}')">⚙️</span></div>
-          </div>
-          <div class="chat-body" id="chat-body"></div>
-          <div class="chat-input">
-            <input type="text" class="chat-input-box" placeholder="Escribe..." />
-            <button class="chat-send-btn">Enviar</button>
-          </div>
-        </div>
-      `;
-      renderMensajes();
-
-      document.querySelector(".chat-send-btn").onclick = async () => {
-        const input = document.querySelector(".chat-input-box");
-        const msg = input.value.trim();
-        if (!msg) return;
-        bots[currentBotId].messages.push({ from: "user", text: msg });
-        const match = bots[currentBotId].qa.find(p => p.q.toLowerCase() === msg.toLowerCase());
-        let respuesta = match ? match.a : "No entiendo esa pregunta.";
-        bots[currentBotId].messages.push({ from: "bot", text: respuesta, image: match?.img });
-        input.value = "";
-        renderMensajes();
-        await guardarBots();
-      };
-    };
-
-    window.renderMensajes = function () {
-      const chat = document.getElementById("chat-body");
-      if (!chat) return;
-      chat.innerHTML = "";
-      bots[currentBotId].messages.forEach(m => {
-        const div = document.createElement("div");
-        div.className = `message ${m.from}`;
-
-        const spanText = document.createElement("span");
-        spanText.textContent = m.text;
-        div.appendChild(spanText);
-
-        if (m.from === "bot") {
-          const icon = document.createElement("span");
-          icon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" height="18" viewBox="0 0 24 24" fill="#ccc" style="margin-left:8px;vertical-align:middle;"><path d="M0 0h24v24H0z" fill="none"/><path d="M3 10v4h4l5 5V5l-5 5H3zm13.5 2c0-1.77-1.02-3.29-2.5-4.03v8.06c1.48-.74 2.5-2.26 2.5-4.03z"/></svg>`;
-          icon.style.cursor = "pointer";
-          icon.title = "Escuchar respuesta";
-          icon.onclick = () => speak(m.text);
-          div.appendChild(icon);
-        }
-
-        chat.appendChild(div);
-
-        if (m.image) {
-          const img = document.createElement("img");
-          img.src = m.image;
-          img.className = "chat-img";
-          img.onclick = () => showFullscreen(img.src);
-          chat.appendChild(img);
-        }
-      });
-      chat.scrollTop = chat.scrollHeight;
-    };
-
-    window.showFullscreen = function (src) {
-      const fs = document.createElement("div");
-      fs.className = "fullscreen-img";
-      fs.innerHTML = `<img src="${src}" onclick="this.parentElement.remove()" />`;
-      document.body.appendChild(fs);
-    };
-
-    window.speak = function (text) {
-      const utterance = new SpeechSynthesisUtterance(text);
-      speechSynthesis.speak(utterance);
-    };
-
-    window.showNotification = function (msg = "¡Guardado exitosamente!") {
-      const noti = document.getElementById("noti");
-      noti.innerText = msg;
-      noti.style.display = "block";
-      setTimeout(() => noti.style.display = "none", 3000);
-    };
-
-    window.abrirConfig = function (id) {
-      const modal = document.createElement("div");
-      modal.className = "config-modal";
-      modal.innerHTML = `
-        <div class="close-btn" onclick="this.parentElement.remove()">✖</div>
-        <h2>Configuración de ${bots[id].name}</h2>
-        <input type="text" id="preg" placeholder="Pregunta" />
-        <input type="text" id="resp" placeholder="Respuesta" />
-        <input type="file" id="img" accept="image/*" />
-        <button onclick="guardarRespuesta('${id}')">Guardar</button>
-        <div id="qa-list"></div>
-      `;
-      document.body.appendChild(modal);
-      renderQA(id);
-    };
-
-    window.guardarRespuesta = async function (id) {
-      const q = document.getElementById("preg").value.trim();
-      const a = document.getElementById("resp").value.trim();
-      const imgInput = document.getElementById("img");
-      if (!q || !a) return;
-      const file = imgInput.files[0];
-      if (file) {
-        const reader = new FileReader();
-        reader.onload = async () => {
-          bots[id].qa.push({ q, a, img: reader.result });
-          await guardarBots();
-          showNotification();
-          renderQA(id);
-        };
-        reader.readAsDataURL(file);
-      } else {
-        bots[id].qa.push({ q, a });
-        await guardarBots();
-        showNotification();
-        renderQA(id);
-      }
-      document.getElementById("preg").value = "";
-      document.getElementById("resp").value = "";
-      imgInput.value = "";
-    };
-
-    window.renderQA = function (id) {
-      const list = document.getElementById("qa-list");
-      if (!list) return;
-      list.innerHTML = '<h3 style="margin-top:20px">Preguntas guardadas:</h3>';
-      bots[id].qa.forEach((p, i) => {
-        const div = document.createElement("div");
-        div.className = "qa-entry";
-        div.innerHTML = `${p.q}<span style='cursor:pointer;' onclick='eliminarQA("${id}", ${i})'>❌</span>`;
-        list.appendChild(div);
-      });
-    };
-
-    window.eliminarQA = async function (id, index) {
-      bots[id].qa.splice(index, 1);
-      await guardarBots();
-      renderQA(id);
-    };
-  </script>
-
   <style>
     * { box-sizing: border-box; }
     body {
@@ -318,22 +31,26 @@
       align-items: flex-start;
       padding-left: 20px;
     }
-    .sidebar .title, .sidebar .btn, .sidebar .bot-list {
+    .sidebar .expandable {
       display: none;
     }
-    .sidebar:hover .title,
-    .sidebar:hover .btn,
-    .sidebar:hover .bot-list {
+    .sidebar:hover .expandable {
       display: block;
       width: 100%;
     }
     .hamburger {
       font-size: 24px;
+      cursor: default;
       margin-bottom: 10px;
     }
     .title {
       font-size: 18px;
-      margin: 0 0 20px 0;
+      margin: 10px 0;
+    }
+    .user-email {
+      font-size: 14px;
+      margin-bottom: 10px;
+      opacity: 0.6;
     }
     .btn {
       background-color: #4a90e2;
@@ -366,6 +83,13 @@
     }
     .bot-item:hover {
       background-color: #3a3a3a;
+    }
+    .logout {
+      margin-top: auto;
+      font-size: 14px;
+      color: #ccc;
+      cursor: pointer;
+      padding: 10px;
     }
     .main-content {
       flex: 1;
@@ -460,8 +184,10 @@
     }
     .config-modal {
       position: fixed;
-      top: 0; left: 0;
-      right: 0; bottom: 0;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
       background: rgba(18,18,18,0.98);
       z-index: 999;
       padding: 40px;
@@ -478,81 +204,349 @@
       background: #2c2c2c;
       color: white;
     }
+    .config-modal input[type="file"] {
+      color: white;
+    }
     .config-modal button {
       padding: 10px;
-      background: #4a90e2;
-      color: white;
+      background-color: #4a90e2;
       border: none;
       border-radius: 6px;
       cursor: pointer;
     }
+    .close-btn {
+      position: absolute;
+      top: 20px;
+      right: 30px;
+      font-size: 24px;
+      cursor: pointer;
+    }
+    .notification {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: #4a90e2;
+      color: white;
+      padding: 12px 18px;
+      border-radius: 8px;
+      z-index: 1000;
+      display: none;
+    }
     .qa-entry {
       background: #2a2a2a;
-      padding: 10px;
-      margin-top: 8px;
+      padding: 8px 12px;
       border-radius: 6px;
+      margin: 6px 0;
       display: flex;
       justify-content: space-between;
       align-items: center;
     }
-    .close-btn {
-      font-size: 20px;
-      cursor: pointer;
-      position: absolute;
-      top: 20px;
-      right: 30px;
-    }
     .chat-img {
-      max-width: 250px;
-      max-height: 180px;
-      border-radius: 10px;
+      max-width: 240px;
+      max-height: 240px;
+      margin-top: 10px;
+      border-radius: 8px;
       cursor: pointer;
+      transition: transform 0.2s ease;
     }
     .fullscreen-img {
       position: fixed;
-      top:0; left:0; right:0; bottom:0;
-      background: rgba(0,0,0,0.95);
+      top: 0; left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0,0,0,0.9);
       display: flex;
       justify-content: center;
       align-items: center;
-      z-index: 1000;
+      z-index: 9999;
     }
     .fullscreen-img img {
       max-width: 90%;
       max-height: 90%;
-      border-radius: 10px;
-    }
-    #noti {
-      position: fixed;
-      bottom: 30px;
-      right: 30px;
-      background: #3168a5;
-      color: white;
-      padding: 10px 16px;
-      border-radius: 8px;
-      display: none;
     }
     @keyframes fadeInUp {
-      from { opacity: 0; transform: translateY(8px); }
-      to { opacity: 1; transform: translateY(0); }
+      0% { opacity: 0; transform: translateY(10px); }
+      100% { opacity: 1; transform: translateY(0); }
     }
   </style>
 </head>
-
 <body>
-  <div class="sidebar">
+  <div class="sidebar" id="sidebar">
     <div class="hamburger">☰</div>
-    <h2 class="title">Mis Bots</h2>
-    <button class="btn" onclick="crearChatbot()">+ Crear Chatbot</button>
-    <div class="bot-list" id="bot-list"></div>
-  </div>
-  <div class="main-content">
-    <div id="intro" class="intro">
-      <h1>Bienvenido a tu Chatbot</h1>
-      <p>Selecciona o crea uno desde el menú izquierdo</p>
+    <div class="expandable">
+      <div class="user-email" id="user-email"></div>
+      <h1 class="title">Chatbots</h1>
+      <button class="btn" onclick="crearChatbot()">+ Crear Chatbot</button>
+      <div id="bot-list" class="bot-list"></div>
+      <div class="logout" onclick="cerrarSesion()">Cerrar sesión</div>
     </div>
-    <div id="chatbot-container" style="display: none;"></div>
-    <div id="noti"></div>
   </div>
+
+  <div class="main-content">
+    <div class="intro" id="intro">
+      <div>🤖 <strong>Chatbots Personalizados</strong></div>
+      <div><button class="btn" onclick="crearChatbot()">+ Crear Chatbot</button></div>
+    </div>
+    <div id="chatbot-container" style="flex:1; display:none; position:relative;"></div>
+  </div>
+
+  <div id="noti" class="notification">¡Guardado exitosamente!</div>
+
+  <!-- Firebase + JS abajo -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+    import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyC-ZActvyB64PUetdMRTdVT5Ca5iOg3qXo",
+      authDomain: "yosbot-io.firebaseapp.com",
+      projectId: "yosbot-io",
+      storageBucket: "yosbot-io.appspot.com",
+      messagingSenderId: "834068770465",
+      appId: "1:834068770465:web:fb01a60a4456c699bb0ae0"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    let user = null;
+    let bots = {};
+    let currentBotId = null;
+
+    const loginSection = document.createElement("div");
+    loginSection.style.cssText = "position:fixed;top:0;left:0;width:100vw;height:100vh;background:#121212;color:white;display:flex;flex-direction:column;justify-content:center;align-items:center;z-index:9999;";
+    loginSection.innerHTML = `
+      <h2>Iniciar sesión</h2>
+      <input id="email" type="email" placeholder="Correo" style="padding:10px;width:250px;margin-bottom:10px;">
+      <input id="pass" type="password" placeholder="Contraseña" style="padding:10px;width:250px;margin-bottom:10px;">
+      <div style="display:flex;gap:10px;">
+        <button id="btn-login" style="padding:10px;">Ingresar</button>
+        <button id="btn-register" style="padding:10px;">Registrarse</button>
+        <button id="btn-google" style="padding:10px;">Google</button>
+      </div>
+    `;
+    document.body.appendChild(loginSection);
+
+    document.getElementById("btn-login").onclick = async () => {
+      const email = document.getElementById("email").value;
+      const pass = document.getElementById("pass").value;
+      try { await signInWithEmailAndPassword(auth, email, pass); } catch { alert("Error al iniciar sesión"); }
+    };
+
+    document.getElementById("btn-register").onclick = async () => {
+      const email = document.getElementById("email").value;
+      const pass = document.getElementById("pass").value;
+      try { await createUserWithEmailAndPassword(auth, email, pass); } catch { alert("Error al registrarse"); }
+    };
+
+    document.getElementById("btn-google").onclick = async () => {
+      try { await signInWithPopup(auth, new GoogleAuthProvider()); } catch { alert("Error con Google Sign-In"); }
+    };
+
+    onAuthStateChanged(auth, async (u) => {
+      if (u) {
+        user = u;
+        document.getElementById("user-email").innerText = user.email;
+        loginSection.remove();
+        await cargarBots();
+        renderSidebar();
+      }
+    });
+
+    async function cargarBots() {
+      const snap = await getDoc(doc(db, "users", user.uid));
+      bots = snap.exists() ? snap.data().bots || {} : {};
+    }
+
+    async function guardarBots() {
+      await setDoc(doc(db, "users", user.uid), { bots }, { merge: true });
+      showNotification("¡Guardado en la nube!");
+    }
+
+    window.crearChatbot = async function () {
+      const name = prompt("Nombre del chatbot:");
+      if (!name) return;
+      const id = Date.now().toString();
+      bots[id] = { name, messages: [], qa: [] };
+      currentBotId = id;
+      await guardarBots();
+      renderSidebar();
+      showBot(id);
+    };
+
+    window.renderSidebar = function () {
+      const list = document.getElementById("bot-list");
+      list.innerHTML = "";
+      for (const id in bots) {
+        const item = document.createElement("div");
+        item.className = "bot-item";
+
+        const nameSpan = document.createElement("span");
+        nameSpan.textContent = bots[id].name;
+        nameSpan.style.flex = "1";
+        nameSpan.onclick = () => showBot(id);
+
+        const trashSpan = document.createElement("span");
+        trashSpan.innerHTML = "🗑️";
+        trashSpan.className = "trash";
+        trashSpan.onclick = async (e) => {
+          e.stopPropagation();
+          if (confirm("¿Eliminar este chatbot?")) {
+            delete bots[id];
+            await guardarBots();
+            renderSidebar();
+            document.getElementById("chatbot-container").style.display = "none";
+            document.getElementById("intro").style.display = "flex";
+          }
+        };
+
+        item.appendChild(nameSpan);
+        item.appendChild(trashSpan);
+        list.appendChild(item);
+      }
+    };
+
+    window.showBot = function (id) {
+      currentBotId = id;
+      document.getElementById("intro").style.display = "none";
+      const cont = document.getElementById("chatbot-container");
+      cont.style.display = "flex";
+      cont.innerHTML = `
+        <div class="chatbot">
+          <div class="chat-header">
+            <span>${bots[id].name}</span>
+            <div><span class="gear" onclick="abrirConfig('${id}')">⚙️</span></div>
+          </div>
+          <div class="chat-body" id="chat-body"></div>
+          <div class="chat-input">
+            <input type="text" class="chat-input-box" placeholder="Escribe..." />
+            <button class="chat-send-btn">Enviar</button>
+          </div>
+        </div>
+      `;
+      renderMensajes();
+
+      document.querySelector(".chat-send-btn").onclick = async () => {
+        const input = document.querySelector(".chat-input-box");
+        const msg = input.value.trim();
+        if (!msg) return;
+        bots[currentBotId].messages.push({ from: "user", text: msg });
+        const match = bots[currentBotId].qa.find(p => p.q.toLowerCase() === msg.toLowerCase());
+        let respuesta = match ? match.a : "No entiendo esa pregunta.";
+        bots[currentBotId].messages.push({ from: "bot", text: respuesta, image: match?.img });
+        input.value = "";
+        renderMensajes();
+        await guardarBots();
+      };
+    };
+
+    window.renderMensajes = function () {
+      const chat = document.getElementById("chat-body");
+      if (!chat) return;
+      chat.innerHTML = "";
+      bots[currentBotId].messages.forEach(m => {
+        const div = document.createElement("div");
+        div.className = `message ${m.from}`;
+        div.innerHTML = `${m.text}`;
+        if (m.from === "bot") {
+          div.innerHTML += ` <span title="Escuchar" onclick="speak('${m.text.replace(/'/g, "\\'")}')">🔊</span>`;
+        }
+        chat.appendChild(div);
+        if (m.image) {
+          const img = document.createElement("img");
+          img.src = m.image;
+          img.className = "chat-img";
+          img.onclick = () => showFullscreen(img.src);
+          chat.appendChild(img);
+        }
+      });
+      chat.scrollTop = chat.scrollHeight;
+    };
+
+    window.abrirConfig = function (id) {
+      const modal = document.createElement("div");
+      modal.className = "config-modal";
+      modal.innerHTML = `
+        <div class="close-btn" onclick="this.parentElement.remove()">✖</div>
+        <h2>Configuración de ${bots[id].name}</h2>
+        <input type="text" id="preg" placeholder="Pregunta" />
+        <input type="text" id="resp" placeholder="Respuesta" />
+        <input type="file" id="img" accept="image/*" />
+        <button onclick="guardarRespuesta('${id}')">Guardar</button>
+        <div id="qa-list"></div>
+      `;
+      document.body.appendChild(modal);
+      renderQA(id);
+    };
+
+    window.guardarRespuesta = async function (id) {
+      const q = document.getElementById("preg").value.trim();
+      const a = document.getElementById("resp").value.trim();
+      const imgInput = document.getElementById("img");
+      if (!q || !a) return;
+      const file = imgInput.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = async () => {
+          bots[id].qa.push({ q, a, img: reader.result });
+          await guardarBots();
+          showNotification();
+          renderQA(id);
+        };
+        reader.readAsDataURL(file);
+      } else {
+        bots[id].qa.push({ q, a });
+        await guardarBots();
+        showNotification();
+        renderQA(id);
+      }
+      document.getElementById("preg").value = "";
+      document.getElementById("resp").value = "";
+      imgInput.value = "";
+    };
+
+    window.renderQA = function (id) {
+      const list = document.getElementById("qa-list");
+      if (!list) return;
+      list.innerHTML = '<h3 style="margin-top:20px">Preguntas guardadas:</h3>';
+      bots[id].qa.forEach((p, i) => {
+        const div = document.createElement("div");
+        div.className = "qa-entry";
+        div.innerHTML = `${p.q}<span style='cursor:pointer;' onclick='eliminarQA("${id}", ${i})'>❌</span>`;
+        list.appendChild(div);
+      });
+    };
+
+    window.eliminarQA = async function (id, index) {
+      bots[id].qa.splice(index, 1);
+      await guardarBots();
+      renderQA(id);
+    };
+
+    window.showFullscreen = function (src) {
+      const fs = document.createElement("div");
+      fs.className = "fullscreen-img";
+      fs.innerHTML = `<img src="${src}" onclick="this.parentElement.remove()" />`;
+      document.body.appendChild(fs);
+    };
+
+    window.speak = function (text) {
+      const utterance = new SpeechSynthesisUtterance(text);
+      speechSynthesis.speak(utterance);
+    };
+
+    window.showNotification = function (msg = "¡Guardado exitosamente!") {
+      const noti = document.getElementById("noti");
+      noti.innerText = msg;
+      noti.style.display = "block";
+      setTimeout(() => noti.style.display = "none", 3000);
+    };
+
+    window.cerrarSesion = function () {
+      signOut(auth).then(() => location.reload());
+    };
+  </script>
 </body>
 </html>
